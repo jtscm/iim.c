@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -O3 -g -Wall -march=native
+CFLAGS = -O3 -Ofast -fno-finite-math-only -g -Wall -march=native
 LDFLAGS = -mavx -mavx2 -mfma
 LDLIBS = -lm 
 INCLUDES =
