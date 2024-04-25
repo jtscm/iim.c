@@ -4,7 +4,7 @@ LDFLAGS = -mavx -mavx2 -mfma
 LDLIBS = -lm 
 INCLUDES =
 TARGET = iimc
-SRC = iimc.c main.c
+SRC = bpe.c iimc.c main.c
 OBJ = $(SRC:.c=.o)
 
 CFLAGS += -fopenmp -DOMP

@@ -6,9 +6,13 @@ enum iimc_error {
 	IIMC_EFILE_NOT_FOUND,
 	IIMC_EFILE_BAD_HEADER,
 	IIMC_EFILE_BAD_PARAMS,
+	IIMC_EFILE_UNEXPECTED_EOF,
+	IIMC_EFILE_BAD_TOKENS,
+	IIMC_EFILE_BAD_WORD_SIZE,
+	IIMC_EFILE_BAD_VOCAB_BPE,
 	IIMC_ENULL_POINTER_FREE,
-	IIMC_EUNKNOWN,
-	IIMC_ENOMEM
+	IIMC_ENOMEM,
+	IIMC_EUNKNOWN
 };
 
 #define GPT2_EOT 50256
@@ -52,5 +56,10 @@ struct iimc_gpt2 {
 		      *lnf, *lnf_mean, *lnf_rstd, *logits, *probs, *losses;
 	} act;
 };
+
+extern struct iimc_bpe *iimc_bpe_new(void);
+extern int iimc_bpe_free(struct iimc_bpe *p);
+extern int iimc_bpe_load(struct iimc_bpe *p, const char *filename);
+extern char *iimc_bpe_decode(struct iimc_bpe *p, int value);
 
 #endif

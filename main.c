@@ -81,7 +81,8 @@ static void token_buffer_update(struct token_buffer *b, int value)
 }
 
 struct iimc_cfg {
-	const char *mf;
+	const char *mf; /* model file name */
+	const char *tf; /* tokenizer decoding file name */
 	int num_token;
 	unsigned long long rng_state;
 	char *prompt;
@@ -92,6 +93,7 @@ struct iimc_cfg {
 static void iimc_cfg_default(struct iimc_cfg *p)
 {
 	p->mf = "gpt2_124M.bin";
+	p->tf = "gpt2_tokenizer.bin";
 	p->num_token = -1;
 	p->rng_state = 1337;
 	p->prompt = NULL;
@@ -103,6 +105,7 @@ static void print_help()
 {
 	 printf("Usage: iimc [OPTION]... \n"
 		"Run inference for GPT2 model to standard output.\n\n"
+		"  -d\t\tset tokenizer decoding file path\n"
 		"  -h\t\tdisplay this help and exit\n"
 		"  -l\t\tlimit the maximum sequence length\n"
 		"    \t\tThe limit must be less than the model maximum sequence length.\n"
@@ -129,8 +132,11 @@ static void parse_cmd(int argc, char *argv[], struct iimc_cfg *p)
 		return;
 
 	int opt;
-	while ((opt = getopt(argc, argv, "hvn:s:m:r:l:")) != -1) {
+	while ((opt = getopt(argc, argv, "d:hl:m:n:r:s:v")) != -1) {
 		switch (opt) {
+			case 'd':
+				p->tf = optarg;
+				break;
 			case 'h':
 				print_help();
 				exit(EXIT_SUCCESS);
@@ -161,42 +167,27 @@ static void parse_cmd(int argc, char *argv[], struct iimc_cfg *p)
 	}
 }
 
-static int check_prompt(struct token_buffer *tb, const char *prompt)
-{
-	assert(tb != NULL);
-	assert(tb->buf != NULL);
-
-	if (prompt == NULL)
-		return 0;
-
-#if 0
-	size_t maxlen = tb->max_seq_len - 1;
-	size_t len = strnlen(prompt, maxlen);
-	if (len == tb->max_seq_len)
-		return -1;
-
-	strncpy(&tb->buf[1], prompt, len);
-	tb->last_pos = len;
-#endif
-	return 0;
-}
-
 int main(int argc, char *argv[])
 {
 	struct iimc_cfg cfg;
+	struct iimc_gpt2 *m;
+	struct token_buffer *tb;
+	struct iimc_bpe *tokenizer;
+	int r;
+	int indx;
+	int decode_tokens = 0;
+
 	iimc_cfg_default(&cfg);
 
 	parse_cmd(argc, argv, &cfg);
 
-	struct iimc_gpt2 *m = iimc_gpt2_new();
+	m = iimc_gpt2_new();
 	if (m == NULL) {
 		fprintf(stderr, "Failed to allocate memory for model. "
 				"Likely out of memory.\n");
 		exit(EXIT_FAILURE);
 	}
 
-	int r;
-	
 	r = iimc_gpt2_load(m, cfg.mf);
 	switch (r) {
 		case IIMC_EFILE_NOT_FOUND:
@@ -236,29 +227,32 @@ int main(int argc, char *argv[])
 			exit(EXIT_FAILURE);
 	}
 
-	struct token_buffer *tb = token_buffer_new(cfg.seq_len, cfg.oversize_r);
+	tb = token_buffer_new(cfg.seq_len, cfg.oversize_r);
 	if (tb == NULL) {
 		fprintf(stderr, "Failed to init token buffer.\n");
 		exit(EXIT_FAILURE);
 	}
 
-	if (check_prompt(tb, cfg.prompt)  != 0) {
-		fprintf(stderr, "Failed to set initial prompt. "
-				"Possibly prompt is too long.");
-		exit(EXIT_FAILURE);
-	}
+	tokenizer = iimc_bpe_new();
+	if (iimc_bpe_load(tokenizer, cfg.tf) != IIMC_ENONE)
+		decode_tokens = 1;
 
-	int indx;
 	for (int t = 1; t != cfg.num_token + 1; t++) {
 		int *buffer = token_buffer_step(tb, &indx);
 		iimc_gpt2_forward(m, buffer, NULL, 1, indx);
 		int value = iimc_gpt2_sample(m, indx, &cfg.rng_state);
 		token_buffer_update(tb, value);
-		printf("%d ", value);
+
+		if (decode_tokens == 0) 
+			printf("%s", iimc_bpe_decode(tokenizer, value));
+		else
+			printf("%d ", value);
+
 		fflush(stdout);
 	}
 	printf("\n");
 
+	iimc_bpe_free(tokenizer);
 	token_buffer_free(tb);
 	iimc_gpt2_free(m);
 	return 0;
