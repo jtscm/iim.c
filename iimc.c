@@ -219,7 +219,7 @@ static int model_init_acts_new(struct iimc_gpt2 *m)
 	if (m->acts != NULL)
 		free(m->acts);
 
-	int r = posix_memalign((void **) &m->acts, 16, m->act_bytes);
+	int r = posix_memalign((void **) &m->acts, 64, m->act_bytes);
 	switch (r) {
 		case 0:
 			break;
