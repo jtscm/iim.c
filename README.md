@@ -10,12 +10,15 @@ What is different:
 - only the forward pass;
 - iim.c accepts command line arguments;
 
-To run iim.c, acquire the model .bin file by Karpathy's llm.c.
-Please note you may need to edit the Makefile to compile.
+To compile and run iim.c:
+- change the Makefile to fit your system
+- acquire the model gpt2_124M.bin file from llm.c
+- acquire the model gpt2_tokenizer.bin file from llm.c (optional)
  
 TODO:
-- token decoding;
+- <s> token decoding; </s>
 - token encoding;
 - writing to the input buffer by stdin;
+- writing to the input buffer by IPC;
 
-Date: April, 17th 2024.
+Date: April, 25th 2024.
